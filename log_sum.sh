@@ -56,28 +56,48 @@ for mode in "${modes[@]}"; do
             fi
         ;;
         r)
-            printf "The most common result codes and where they come from are: \n"
+            printf "The most common result codes and where they come from are:\n"
             if [ "$limit" -ne 0 ]; then
-                awk '{print $9, $1}' "$filename" | sort | uniq -c | sort -nr | head -n "$limit" | awk '{printf "%-6s %-16s %5d\n", $2, $3, $1}'
+                top_codes=$(awk '{print $9}' "$filename" | sort | uniq -c | sort -nr | head -n "$limit" | awk '{print $2}')
+
+                for code in $top_codes; do
+                    echo ""
+                    awk -v c="$code" '$9 == c {print $1}' "$filename" \
+                        | sort | uniq -c | sort -nr | head -n "$limit" \
+                        | awk -v cc="$code" '{printf "%-6s %-16s %5d\n", cc, $2, $1}'
+                done
             else
-                awk '{print $9, $1}' "$filename" | sort | uniq -c | sort -nr | awk '{printf "%-6s %-16s %5d\n", $2, $3, $1}'
+                awk '{print $9, $1}' "$filename" | sort | uniq -c | sort -nr | \
+                awk '{printf "%-6s %-16s %5d\n", $2, $3, $1}'
             fi
         ;;
         F)
             printf "The most common result codes that result in failure and where they come from are: \n"
             if [ "$limit" -ne 0 ]; then
-                awk '$9 ~ /^[45]/ {print $9, $1}' "$filename" | sort | uniq -c | sort -nr | awk '{printf "%-16s %5d\n", $2, $1}' | head -n "$limit"
+                top_error_codes=$(awk '$9 ~ /^[45]/ {print $9}' "$filename" | sort | uniq -c | sort -nr | head -n "$limit" | awk '{print $2}')
+                for code in $top_error_codes; do
+                    echo ""
+                    awk -v c="$code" '$9 == c {print $1}' "$filename" \
+                        | sort | uniq -c | sort -nr | head -n "$limit" \
+                        | awk -v cc="$code" '{printf "%-6s %-16s %5d\n", cc, $2, $1}'
+                done    
             else
-                awk '$9 ~ /^[45]/ {print $9, $1}' "$filename" | sort | uniq -c | sort -nr | awk '{printf "%-16s %5d\n", $2, $1}'
+                awk '$9 ~ /^[45]/ {print $9, $1}' "$filename" | sort | uniq -c | sort -nr | awk '{printf "%-16s %5d\n", $2, $3, $1}'
             fi
 
         ;;
         t)
             printf "The IP numbers that get the most bytes sent to them are: \n"
             if [ "$limit" -ne 0 ]; then
-                awk '$10 {print $10, $2}' "$filename" | sort -k2,2nr | uniq -c | sort -nr | awk '{printf "%-16s %5d\n", $10, $2}' | head -n "$limit"
+                top_bytes=$(awk '{print $10}' "$filename" | sort -nr | uniq | head -n "$limit")
+                for byte in $top_bytes; do
+                    echo ""
+                    awk -v b="$byte" '$10 == b {print $1}' "$filename" \
+                        | sort | uniq -c | sort -nr | head -n "$limit" \
+                        | awk -v bb="$byte" '{printf "%-12s %16s %5d\n", bb, $2, $1}'
+                done
             else
-                awk '$10 {print $10, $2}' "$filename" | sort -k2,2nr | uniq -c | sort -nr | awk '{printf "%-16s %5d\n", $10, $2}'
+                awk '$10 {print $10}' "$filename" | sort | uniq -c | sort -nr | awk '{printf "%-12s %16s %5d\n", $10, $2, $1}'
             fi
 
         ;;
