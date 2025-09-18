@@ -37,6 +37,11 @@ else
     echo "Using log file: $filename"
 fi
 
+if [ ${#modes[@]} -eq 0 ]; then
+    echo "No mode selected. Please select at least one mode."
+    exit 1
+fi
+
 for mode in "${modes[@]}"; do
     case $mode in
         c)
