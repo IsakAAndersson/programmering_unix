@@ -89,17 +89,12 @@ for mode in "${modes[@]}"; do
         t)
             printf "The IP numbers that get the most bytes sent to them are: \n"
             if [ "$limit" -ne 0 ]; then
-                top_bytes=$(awk '{print $10}' "$filename" | sort -nr | uniq | head -n "$limit")
-                for byte in $top_bytes; do
-                    echo ""
-                    awk -v b="$byte" '$10 == b {print $1}' "$filename" \
-                        | sort | uniq -c | sort -nr | head -n "$limit" \
-                        | awk -v bb="$byte" '{printf "%-12s %16s %5d\n", bb, $2, $1}'
-                done
+                awk '{bytes[$1] += $10} END {for (ip in bytes) printf "%-16s %12d\n", ip, bytes[ip]}'\
+                    "$filename" | sort -k2 -nr | head -n "$limit"
             else
-                awk '$10 {print $10}' "$filename" | sort | uniq -c | sort -nr | awk '{printf "%-12s %16s %5d\n", $10, $2, $1}'
+                awk '{bytes[$1] += $10} END {for (ip in bytes) printf "%-16s %12d\n", ip, bytes[ip]}'\
+                    "$filename" | sort -k2 -nr
             fi
-
         ;;
         *) echo "Unknown mode: $mode"
         ;;
