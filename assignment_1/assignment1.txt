@@ -1,0 +1,17 @@
+Isak Andersson isar23
+Robin Svensson rosv23
+
+Desired Grade: Not sure what to write here, we would like an A if that's possible
+
+The solution:
+We made a case selection scanning the input flags and put them into an array called modes. 
+Then we made a for-loop iterating through these flags to print the data required for each flag
+with another case statement where we determined what every flag should do.
+We also added some basic security measures to ensure that the data file exists or a fallback to the 
+file received from the assignment. 
+Since we were done in time we also fixed so that the printouts somewhat matched the examples with 
+tailored spacing between the columns by addressing a predetermined number of characters to each column 
+The main method we used to develop the script was to develop one flag at a time and making sure it worked
+before moving on to the next. 
+We have to the best of our understanding completed all tasks given and the code is written neatly and
+understandable.
