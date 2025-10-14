@@ -77,11 +77,24 @@ int main(int argc, char *argv[]){
         updateClusterCentroids(clusters, numberOfClusters, points, numberOfPoints);
     }
 
-    // Print results (point -> cluster assignments)
-    for (int i = 0; i < numberOfPoints; i++) {
-        printf("%g\t%g\tcluster %d\n", points[i].x, points[i].y, points[i].cluster);
+    // Open output file or create if it doesn't exist
+    FILE *outfile = fopen("kmeans-output.txt", "w");
+    if (outfile == NULL) {
+        fprintf(stderr, "Could not open output file\n");
+        free(clusters);
+        free(points);
+        return 1;
     }
-
+    
+    // Write results to file (point -> cluster assignments)
+    for (int i = 0; i < numberOfPoints; i++) {
+        fprintf(outfile, "%g\t%g\t%d\n", points[i].x, points[i].y, points[i].cluster);
+    }
+    
+    // Close output file
+    fclose(outfile);
+    printf("Results written to kmeans-output.txt\n");
+    
     // Free allocated memory
     free(clusters);
     free(points);

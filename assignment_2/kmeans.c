@@ -18,8 +18,8 @@ struct Cluster {
 //Create the clusters with random centroids
 void initializeClusters(struct Cluster *clusters, int k) {
     for (int i = 0; i < k; i++) {
-        clusters[i].centroid.x = rand() % 100;
-        clusters[i].centroid.y = rand() % 100;
+        clusters[i].centroid.x = (rand() % 101) - 50; // Random x between -50 and 50
+        clusters[i].centroid.y = (rand() % 101) - 50; // Random y between -50 and 50
         clusters[i].pointCount = 0;
     }
 }
