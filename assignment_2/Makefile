@@ -1,14 +1,22 @@
-#Objektfiler
+CC = gcc
+CFLAGS = -Wall -Wextra -g
+LDFLAGS = -lm
+
+
+# Default target
+all: kmeans
+
+# Object files
 kmeans.o: kmeans.c
-	$(CC) -c kmeans.c -o kmeans.o
+	$(CC) $(CFLAGS) -c kmeans.c -o kmeans.o
 
 main.o: main.c
-	$(CC) -c main.c -o main.o
+	$(CC) $(CFLAGS) -c main.c -o main.o
 
-#Exekverbar fil
+# Executable file
 kmeans: kmeans.o main.o
-	$(CC) kmeans.o main.o -o kmeans -lm
+	$(CC) $(CFLAGS) kmeans.o main.o -o kmeans $(LDFLAGS)
 
-#Rensa upp
+# Clean up
 clean:
 	rm -f kmeans *.o

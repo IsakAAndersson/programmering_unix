@@ -4,52 +4,86 @@
 #include <string.h>
 #include <time.h>
 
-//Point structure
+/* Structures */
+
+// Point structure
 struct Point {
     double x;
     double y;
     int cluster;
 };
 
-//Functions
-double euclideanDistance(struct Point a, struct Point b) {
-    return sqrt(pow(a.x - b.x, 2) + pow(a.y - b.y, 2));
-}
+// Cluster structure
+struct Cluster {
+    struct Point centroid;
+    int pointCount;
+};
 
-int main(int argc, char *argv[]) {
 
-    FILE *file;
-    if (argc > 1) {
-        file = fopen(argv[1], "r");
-        if (file == NULL) {
-            printf("No file found");
-            return 1;
-        }
-    }
-    else {
-        file = fopen("kmeans-data.txt", "r");
-        if (file == NULL) {
-            printf("No file found");
-            return 1;
-        }
-    }
-    char buffer[128];
+/* Declarations of functions from kmeans.c */
+struct Point* readPointsFromFile(const char *filename, int *numberOfPoints);
+void initializeClusters(struct Cluster *clusters, int k);
+void assignPointsToClusters(struct Point *points, int numberOfPoints, struct Cluster *clusters, int numberOfClusters);
+void updateClusterCentroids(struct Cluster *clusters, int numberOfClusters, struct Point *points, int numberOfPoints);
+
+int main(int argc, char *argv[]){
+
+    // Global variables
     int numberOfPoints = 0;
-    struct Point *points = NULL;
+    int numberOfClusters = 0;
 
-    while (fgets(buffer, sizeof(buffer), file)) {
-        points = realloc(points, sizeof(struct Point) * (numberOfPoints + 1));
-        if (points == NULL) {
-            printf("Memory allocation failed");
-            return 1;
-        }
-        sscanf(buffer, "%lf %lf", &points[numberOfPoints].x, &points[numberOfPoints].y);
-        numberOfPoints++;
+    const char *filename = (argc > 1) ? argv[1] : NULL;
+
+    // Read points from file
+    struct Point *points = readPointsFromFile(filename, &numberOfPoints);
+    if (points == NULL) {
+        fprintf(stderr, "Could not read data file\n");
+        return 1;
     }
 
-    printf("Enter number of clusters: ");
-    int numberOfClusters;
-    scanf("%d", &numberOfClusters);
+    printf("Read %d points\n", numberOfPoints);
 
+    // Get number of clusters from user
+    printf("Enter number of clusters (1-%d): ", numberOfPoints);
+    if (scanf("%d", &numberOfClusters) != 1) {
+        fprintf(stderr, "Invalid value\n");
+        free(points);
+        return 1;
+    }
 
+    // Ensure valid number of clusters
+    if (numberOfClusters < 1) numberOfClusters = 1;
+    if (numberOfClusters > numberOfPoints) numberOfClusters = numberOfPoints;
+
+    // Allocate memory for clusters
+    struct Cluster *clusters = malloc(sizeof *clusters * numberOfClusters);
+    if (clusters == NULL) {
+        fprintf(stderr, "Memory allocation failed\n");
+        free(points);
+        return 1;
+    }
+    // Initialize clusters randomly
+    srand((unsigned)time(NULL));
+    initializeClusters(clusters, numberOfClusters);
+
+    // Enkel k-means-loop (ingen konvergenskontroll här, lägg till om du vill)
+    int maxIterations = 100;
+    for (int iteration = 0; iteration < maxIterations; iteration++) {
+
+        // Reset point counts before reassignment
+        for (int i = 0; i < numberOfClusters; i++) clusters[i].pointCount = 0;
+
+        assignPointsToClusters(points, numberOfPoints, clusters, numberOfClusters);
+        updateClusterCentroids(clusters, numberOfClusters, points, numberOfPoints);
+    }
+
+    // Print results (point -> cluster assignments)
+    for (int i = 0; i < numberOfPoints; i++) {
+        printf("%g\t%g\tcluster %d\n", points[i].x, points[i].y, points[i].cluster);
+    }
+
+    // Free allocated memory
+    free(clusters);
+    free(points);
+    return 0;
 }
