@@ -1,0 +1,22 @@
+Isak Andersson isar23
+Robin Svensson rosv23
+
+Desired grade: A 
+We have created a modular system which makes use of both main.c and kmeans.c in an effective way. 
+Functions are well named and structured in a way that is easy to understand and the more complicated
+sections are commented to help the user understand. 
+We also created a python program with the help of AI to help us get a visual of the results, mainly 
+to help us in the progress. (matplotlib needs to be installed)
+The makefile makes .o-files and an executable file. With make check you can also run tests with
+results written into terminal and gdb.log.
+You can choose what dataset you want to use by either add it as an argument when running kmeans 
+(e.g. "./kmeans kmeans-data.txt") or as a flag (e.g. "DATA=kmeans-data.txt").
+Make run DATA=kmeans-data.txt K=2 will run with dataset kmeans-data.txt with two clusters.
+We used Valgrind as memory checks and gdb as error checks in our make file along with standard c-flags
+such as -Wall -Wextra. Moreover we also made it compile with c23 (requires gcc --version 13 or higher) and optimised with O2 
+We also made sure that the Makefile automatically checks if Valgrind and gdb is installed and sends error
+messages if that is not the case.
+
+All in all we think we have solved all the problems regarding functionality and error handling and memory management. 
+The memory allocation is also handled in a way that raises the capacity in case of need instead of 
+hard coding it making it slimmer. 
