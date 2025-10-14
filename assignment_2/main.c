@@ -4,6 +4,10 @@
 #include <string.h>
 #include <time.h>
 
+/* Predefined constants */
+#define MAX_ITERATIONS 1000 //maximum number of iterations in clustering to prevent infinite loops
+#define EPSILON 0.01    //minimum change in centroid position to continue
+
 /* Structures */
 
 // Point structure
@@ -27,9 +31,6 @@ void assignPointsToClusters(struct Point *points, int numberOfPoints, struct Clu
 void updateClusterCentroids(struct Cluster *clusters, int numberOfClusters, struct Point *points, int numberOfPoints);
 
 int main(int argc, char *argv[]){
-
-    // Initialize random seed for cluster initialization
-    srand((unsigned)time(NULL));
 
     // Global variables
     int numberOfPoints = 0;
@@ -55,8 +56,18 @@ int main(int argc, char *argv[]){
     }
 
     // Ensure valid number of clusters
-    if (numberOfClusters < 1) numberOfClusters = 1;
-    if (numberOfClusters > numberOfPoints) numberOfClusters = numberOfPoints;
+    if (numberOfClusters < 1){
+        int oldNumberOfClusters = numberOfClusters;
+        numberOfClusters = 1;
+        printf("Number of clusters: %d < 1: set to minimum value of 1\n", oldNumberOfClusters);
+    }
+    if (numberOfClusters > numberOfPoints){
+        int oldNumberOfClusters = numberOfClusters;
+        numberOfClusters = numberOfPoints;
+        printf("Number of clusters: %d > %d: set to maximum value of %d\n", oldNumberOfClusters, numberOfPoints, numberOfPoints);
+    }
+    printf("Using %d clusters\n", numberOfClusters);
+
 
     // Allocate memory for clusters
     struct Cluster *clusters = malloc(sizeof *clusters * numberOfClusters);
@@ -69,16 +80,35 @@ int main(int argc, char *argv[]){
     srand((unsigned)time(NULL));
     initializeClusters(clusters, numberOfClusters);
 
-    // Enkel k-means-loop (ingen konvergenskontroll här, lägg till om du vill)
-    int maxIterations = 100;
-    for (int iteration = 0; iteration < maxIterations; iteration++) {
+    // K-means algorithm iterations
+    int iteration = 0;
+    int converged = 0;
 
-        // Reset point counts before reassignment
-        for (int i = 0; i < numberOfClusters; i++) clusters[i].pointCount = 0;
-
-        assignPointsToClusters(points, numberOfPoints, clusters, numberOfClusters);
-        updateClusterCentroids(clusters, numberOfClusters, points, numberOfPoints);
+while (!converged && iteration < MAX_ITERATIONS) {
+    iteration++;
+    
+    // Save old centroids for convergence check
+    struct Point oldCentroids[numberOfClusters];
+    for (int i = 0; i < numberOfClusters; i++) {
+        oldCentroids[i] = clusters[i].centroid;
+        clusters[i].pointCount = 0; // reset before reassignment
     }
+
+    assignPointsToClusters(points, numberOfPoints, clusters, numberOfClusters);
+    updateClusterCentroids(clusters, numberOfClusters, points, numberOfPoints);
+
+    // Check if centroids have changed significantly
+    converged = 1;
+    for (int i = 0; i < numberOfClusters; i++) {
+        double dx = clusters[i].centroid.x - oldCentroids[i].x;
+        double dy = clusters[i].centroid.y - oldCentroids[i].y;
+        if (dx*dx + dy*dy > EPSILON*EPSILON) {
+            converged = 0;
+            break;
+        }
+    }
+}
+
 
     // Open output file or create if it doesn't exist
     FILE *outfile = fopen("kmeans-output.txt", "w");

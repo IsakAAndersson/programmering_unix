@@ -2,9 +2,8 @@ CC = gcc
 CFLAGS = -Wall -Wextra -g
 LDFLAGS = -lm
 
-
 # Default target
-all: kmeans
+all: kmeans run_valgrind
 
 # Object files
 kmeans.o: kmeans.c
@@ -17,6 +16,10 @@ main.o: main.c
 kmeans: kmeans.o main.o
 	$(CC) $(CFLAGS) kmeans.o main.o -o kmeans $(LDFLAGS)
 
+# Run program with Valgrind automatically after building
+run_valgrind: kmeans
+	valgrind --leak-check=full --show-leak-kinds=all ./kmeans
+
 # Clean up
 clean:
-	rm -f kmeans *.o kmeans-output.txt scatter_plot.png
+	rm -f kmeans *.o scatter_plot.png kmeans-output.txt
