@@ -6,7 +6,6 @@
 
 /* Predefined constants */
 #define MAX_ITERATIONS 1000 //maximum number of iterations in clustering to prevent infinite loops
-#define EPSILON 0.01    //minimum change in centroid position to continue
 
 /* Structures */
 
@@ -29,6 +28,7 @@ struct Point* readPointsFromFile(const char *filename, int *numberOfPoints);
 void initializeClusters(struct Cluster *clusters, int k);
 void assignPointsToClusters(struct Point *points, int numberOfPoints, struct Cluster *clusters, int numberOfClusters);
 void updateClusterCentroids(struct Cluster *clusters, int numberOfClusters, struct Point *points, int numberOfPoints);
+int checkConvergence(struct Cluster *clusters, struct Point *oldCentroids, int numberOfClusters); // <-- Lägg till denna
 
 int main(int argc, char *argv[]){
 
@@ -98,15 +98,7 @@ while (!converged && iteration < MAX_ITERATIONS) {
     updateClusterCentroids(clusters, numberOfClusters, points, numberOfPoints);
 
     // Check if centroids have changed significantly
-    converged = 1;
-    for (int i = 0; i < numberOfClusters; i++) {
-        double dx = clusters[i].centroid.x - oldCentroids[i].x;
-        double dy = clusters[i].centroid.y - oldCentroids[i].y;
-        if (dx*dx + dy*dy > EPSILON*EPSILON) {
-            converged = 0;
-            break;
-        }
-    }
+    converged = checkConvergence(clusters, oldCentroids, numberOfClusters);
 }
 
 

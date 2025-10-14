@@ -2,6 +2,7 @@
 #include <stdlib.h>
 #include <math.h>
 
+
 /*----------- Structures -----------*/
 struct Point {
     double x;
@@ -69,6 +70,22 @@ void updateClusterCentroids(struct Cluster *clusters, int numberOfClusters,
             clusters[i].centroid.y = sumY / count;
         }
     }
+}
+
+//Check if centroids have changed significantly
+
+#define EPSILON 0.01 // Minimum change in centroid position to continue
+
+
+int checkConvergence(struct Cluster *clusters, struct Point *oldCentroids, int numberOfClusters) {
+    for (int i = 0; i < numberOfClusters; i++) {
+        double dx = clusters[i].centroid.x - oldCentroids[i].x;
+        double dy = clusters[i].centroid.y - oldCentroids[i].y;
+        if (dx*dx + dy*dy > EPSILON*EPSILON) {
+            return 0; // Not converged
+        }
+    }
+    return 1; // Converged
 }
 
 //Read file and load points into an array
