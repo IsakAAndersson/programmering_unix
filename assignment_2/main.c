@@ -36,6 +36,7 @@ int main(int argc, char *argv[]){
     int numberOfPoints = 0;
     int numberOfClusters = 0;
 
+    // Get filename from command line argument or use default
     const char *filename = (argc > 1) ? argv[1] : NULL;
 
     // Read points from file
