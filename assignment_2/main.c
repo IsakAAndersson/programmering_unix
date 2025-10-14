@@ -28,6 +28,9 @@ void updateClusterCentroids(struct Cluster *clusters, int numberOfClusters, stru
 
 int main(int argc, char *argv[]){
 
+    // Initialize random seed for cluster initialization
+    srand((unsigned)time(NULL));
+
     // Global variables
     int numberOfPoints = 0;
     int numberOfClusters = 0;

@@ -19,4 +19,4 @@ kmeans: kmeans.o main.o
 
 # Clean up
 clean:
-	rm -f kmeans *.o
+	rm -f kmeans *.o kmeans-output.txt scatter_plot.png
