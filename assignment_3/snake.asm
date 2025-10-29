@@ -234,43 +234,72 @@ place_apple:
     movq    %rsp, %rbp
     pushq   %rbx
     pushq   %r12
+    pushq   %r13
+    pushq   %r14
     
     # Save apple index
     movl    %ebx, %r12d
-    
+
+retry_position:
     # Generate random X coordinate (1 to BOARD_WIDTH-1)
     call    rand
     xorl    %edx, %edx
     movl    $BOARD_WIDTH, %ecx
-    subl    $2, %ecx                # Width - 2 (range for values 1 to WIDTH-1)
+    subl    $2, %ecx
     cmpl    $1, %ecx
     jge     do_x_div
-    movl    $1, %ecx                # Safety: minimum range of 1
+    movl    $1, %ecx
 do_x_div:
-    divl    %ecx                    # edx = rand % (BOARD_WIDTH-2)
-    incl    %edx                    # edx = 1 to BOARD_WIDTH-1
-    
-    # Sign extend apple index for array indexing
-    movslq  %r12d, %r8
-    leaq    apples_x(%rip), %rdi
-    movl    %edx, (%rdi,%r8,4)
+    divl    %ecx
+    incl    %edx                    # edx = X coordinate
+    movl    %edx, %r13d             # Save X in r13d
     
     # Generate random Y coordinate (1 to BOARD_HEIGHT-1)
     call    rand
     xorl    %edx, %edx
     movl    $BOARD_HEIGHT, %ecx
-    subl    $2, %ecx                # Height - 2 (range for values 1 to HEIGHT-1)
+    subl    $2, %ecx
     cmpl    $1, %ecx
     jge     do_y_div
-    movl    $1, %ecx                # Safety: minimum range of 1
+    movl    $1, %ecx
 do_y_div:
-    divl    %ecx                    # edx = rand % (BOARD_HEIGHT-2)
-    incl    %edx                    # edx = 1 to BOARD_HEIGHT-1
+    divl    %ecx
+    incl    %edx                    # edx = Y coordinate
+    movl    %edx, %r14d             # Save Y in r14d
     
+    # Check if position overlaps with snake
+    xorl    %ecx, %ecx
+check_overlap_loop:
+    cmpl    snake_len(%rip), %ecx
+    jge     position_ok             # No overlap found
+    
+    movslq  %ecx, %r8
+    leaq    snake_x(%rip), %rdi
+    cmpl    %r13d, (%rdi,%r8,4)     # Compare with generated X
+    jne     check_next_segment
+    
+    leaq    snake_y(%rip), %rdi
+    cmpl    %r14d, (%rdi,%r8,4)     # Compare with generated Y
+    jne     check_next_segment
+    
+    # Overlap detected! Try again
+    jmp     retry_position
+    
+check_next_segment:
+    incl    %ecx
+    jmp     check_overlap_loop
+
+position_ok:
+    # Save coordinates to apple arrays
     movslq  %r12d, %r8
-    leaq    apples_y(%rip), %rdi
-    movl    %edx, (%rdi,%r8,4)
+    leaq    apples_x(%rip), %rdi
+    movl    %r13d, (%rdi,%r8,4)
     
+    leaq    apples_y(%rip), %rdi
+    movl    %r14d, (%rdi,%r8,4)
+    
+    popq    %r14
+    popq    %r13
     popq    %r12
     popq    %rbx
     leave
