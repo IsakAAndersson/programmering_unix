@@ -577,6 +577,21 @@ check_apple_loop:
     # Apple eaten! Set grow flag
     movl    $1, grow_pending(%rip)
     
+    # Increase speed (decrease delay by 5%)
+    # new_speed = current_speed * 0.95 = current_speed * 19 / 20
+    movl    game_speed(%rip), %eax
+    imull   $19, %eax               # Multiply by 19
+    xorl    %edx, %edx              # Clear high part for division
+    movl    $20, %r12d
+    divl    %r12d                   # Divide by 20, result in %eax
+    
+    # Check minimum speed (10ms = 10000 microseconds)
+    cmpl    $10000, %eax
+    jge     speed_ok
+    movl    $10000, %eax
+speed_ok:
+    movl    %eax, game_speed(%rip)
+    
     # Place new apple
     movl    %ecx, %ebx
     call    place_apple
