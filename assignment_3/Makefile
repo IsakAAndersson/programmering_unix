@@ -4,7 +4,7 @@
 #
 # Author: Christoffer Åleskog
 
-all: snake_asm snake_asm_start
+all: snake snake_asm_start
 
 # Rule for compiling C source
 .c.o:
@@ -19,7 +19,7 @@ workaround.o: workaround.asm
 	as -gstabs $^ -o $@
 
 # ASM game
-snake_asm: main.o snake.o helpers.o
+snake: main.o snake.o helpers.o
 	gcc main.o snake.o helpers.o -lncurses -o $@
 
 # ASM game

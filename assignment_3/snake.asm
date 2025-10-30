@@ -97,8 +97,8 @@ movslq %ecx, %r8
 .extern usleep
 .extern rand
 
-# Main game start function, initializing base state
 start_game:
+# Main game start function, initializing base state
     pushq   %rbp
     movq    %rsp, %rbp
     subq    $8, %rsp                
@@ -113,15 +113,14 @@ start_game:
     movl    %esi, %r13d             
     
     call    board_init
-
     call    draw_border
 
     movl    %r12d, %edi
     movl    %r13d, %esi
     call    init_game
     
-# Main game loop: input, movement, collision, rendering
 game_loop:
+# Main game loop: input, movement, collision, rendering
     xorl    %eax, %eax
     call    board_get_key
     movl    %eax, %ebx              
@@ -135,27 +134,23 @@ game_loop:
     movl    %ebx, %edi
     call    update_direction
    
-# Skip direction update, continue current direction with current speed
 skip_input:
-    call    move_snake
-    
+# Skip direction update, continue current direction with current speed
+    call    move_snake  
     call    check_collision
     cmpl    $0, %eax
-    jne     game_over
-    
-    call    check_apple
-    
-    call    draw_game
-    
+
+    jne     game_over  
+ 
+    call    check_apple   
+    call    draw_game  
     movl    game_speed(%rip), %edi
-    call    usleep
-    
+    call    usleep 
+
     jmp     game_loop
 
-# End game and restore state before exit
 game_over:
-    call    game_exit
-    
+    call    game_exit  
     popq    %r15
     popq    %r14
     popq    %r13
@@ -164,10 +159,9 @@ game_over:
     leave
     ret
 
-
+init_game:
 # Initialize game state with snake length, apple count and start positions
 # Save snake length and number of apples to safe registers (r12d, r13d)
-init_game:
     pushq   %rbp
     movq    %rsp, %rbp
     subq    $8, %rsp                
@@ -196,6 +190,7 @@ init_snake_loop:
     
     movslq  %ecx, %r8
 
+    # Set x position (center, moving left)
     movl    %eax, %edx
     subl    %ecx, %edx
     leaq    snake_x(%rip), %rdi
@@ -217,6 +212,7 @@ init_snake_done:
     xorl    %ecx, %ecx
 
 init_apple_loop:
+    # Place initial apples
     cmpl    %r13d, %ecx
     jge     init_apple_done
     
@@ -234,21 +230,14 @@ init_apple_done:
     leave
     ret
 
-/*
-place_apple - Place an apple at random position
-
-Parameters:
-   %ebx - apple index
-*/
 place_apple:
+    # place_apple - Place an apple at random position
     pushq   %rbp
     movq    %rsp, %rbp
     pushq   %rbx
     pushq   %r12
     pushq   %r13
     pushq   %r14
-    
-    # Save apple index
     movl    %ebx, %r12d
 
 retry_position:
@@ -260,10 +249,11 @@ retry_position:
     cmpl    $1, %ecx
     jge     do_x_div
     movl    $1, %ecx
+
 do_x_div:
     divl    %ecx
-    incl    %edx                    # edx = X coordinate
-    movl    %edx, %r13d             # Save X in r13d
+    incl    %edx
+    movl    %edx, %r13d
     
     # Generate random Y coordinate (1 to BOARD_HEIGHT-1)
     call    rand
@@ -339,14 +329,14 @@ apple_position_ok:
     leave
     ret
 
+
+update_direction:
 /*
 update_direction - Update snake direction based on key
 Comparing with current direction to prevent 180-degree turns.
 */
-update_direction:
     pushq   %rbp
-    movq    %rsp, %rbp
-    
+    movq    %rsp, %rbp  
     movl    direction(%rip), %eax
     
 # Check UP key
@@ -384,9 +374,6 @@ update_dir_done:
     leave
     ret
 
-
-# move_snake - Move the snake in current direction
-
 move_snake:
     pushq   %rbp
     movq    %rsp, %rbp
@@ -398,9 +385,8 @@ move_snake:
     
     # Save current tail position before moving
     movl    snake_len(%rip), %r13d
-    decl    %r13d                   # r13d = tail index
+    decl    %r13d
     
-    # Sign extend to 64-bit for array indexing
     movslq  %r13d, %r13
     
     leaq    snake_x(%rip), %rdi
@@ -417,7 +403,6 @@ move_snake:
     
     # Calculate new head position based on direction
     movl    direction(%rip), %ecx
-    
     cmpl    $DIR_UP, %ecx
     jne     check_move_down
     decl    %ebx
@@ -546,24 +531,21 @@ set_new_head:
     popq    %r13
     popq    %r12
     popq    %rbx
-    movq    %rbp, %rsp
-    popq    %rbp
+    leave
     ret
 
+check_collision:
 /*
 Check if snake hits itself by getting head position and 
 checking against body segment by segment, boolean return
 */
-check_collision:
     pushq   %rbp
     movq    %rsp, %rbp
     pushq   %rbx
     
     # Get head position
-    leaq    snake_x(%rip), %rdi
-    movl    (%rdi), %eax
-    leaq    snake_y(%rip), %rdi
-    movl    (%rdi), %ebx
+    movl    snake_x(%rip), %eax
+    movl    snake_y(%rip), %ebx
     
     movl    $1, %ecx
 
@@ -605,13 +587,11 @@ check_apple:
     movq    %rsp, %rbp
     pushq   %rbx
     pushq   %r12
-    
+
     # Get head position
-    leaq    snake_x(%rip), %rdi
-    movl    (%rdi), %eax
-    leaq    snake_y(%rip), %rdi
-    movl    (%rdi), %ebx
-    
+    movl    snake_x(%rip), %eax
+    movl    snake_y(%rip), %ebx
+
     xorl    %ecx, %ecx
 
 check_apple_loop:
@@ -630,11 +610,7 @@ check_apple_loop:
     
     movl    $1, grow_pending(%rip)
     
-    /* 
-    Increase speed (decrease delay by 5%)
-    new_speed = current_speed * 0.95 = current_speed * 19 / 20
-    */
-
+    # Increase speed (decrease delay by 5%)
     movl    game_speed(%rip), %eax
     imull   $19, %eax
     xorl    %edx, %edx
@@ -660,8 +636,7 @@ check_apple_next:
 check_apple_done:
     popq    %r12
     popq    %rbx
-    movq    %rbp, %rsp
-    popq    %rbp
+    leave
     ret
 
 
