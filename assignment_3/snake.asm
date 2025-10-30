@@ -4,6 +4,10 @@
 
 CODE EXPLANATION
 
+pushq   %rbp
+movq    %rsp, %rbp
+    Standard function prologue to set up stack frame. 
+
 subq    $8, %rsp
     Align stack to 16-byte boundary for function calls that require it.
 
@@ -14,10 +18,10 @@ leave == movq    %rbp, %rsp
 <global_variable>(%rip) == current value of global_variable
     Accessing global variables using RIP-relative addressing.
 
-%edi - first integer parameter (snake length in this case)
+%edi - first integer parameter
     Standard calling convention for passing parameters in registers.
 
-%esi - second integer parameter (number of apples in this case)
+%esi - second integer parameter
     Standard calling convention for passing parameters in registers.
 
 %rax / %eax - return value register (64 bit / 32 bit)
@@ -111,7 +115,7 @@ start_game:
     call    board_init
 
     call    draw_border
-    
+
     movl    %r12d, %edi
     movl    %r13d, %esi
     call    init_game
@@ -269,33 +273,56 @@ do_x_div:
     movl    $1, %ecx
 do_y_div:
     divl    %ecx
-    incl    %edx                    # edx = Y coordinate
-    movl    %edx, %r14d             # Save Y in r14d
+    incl    %edx
+    movl    %edx, %r14d
     
     # Check if position overlaps with snake
     xorl    %ecx, %ecx
 check_overlap_loop:
     cmpl    snake_len(%rip), %ecx
-    jge     position_ok             # No overlap found
+    jge     snake_position_ok
     
     movslq  %ecx, %r8
     leaq    snake_x(%rip), %rdi
-    cmpl    %r13d, (%rdi,%r8,4)     # Compare with generated X
+    cmpl    %r13d, (%rdi,%r8,4)
     jne     check_next_segment
     
     leaq    snake_y(%rip), %rdi
-    cmpl    %r14d, (%rdi,%r8,4)     # Compare with generated Y
+    cmpl    %r14d, (%rdi,%r8,4)
     jne     check_next_segment
     
-    # Overlap detected! Try again
     jmp     retry_position
     
 check_next_segment:
     incl    %ecx
     jmp     check_overlap_loop
 
-position_ok:
-    # Save coordinates to apple arrays
+snake_position_ok:
+    xorl    %r10d, %r10d
+
+check_apple_overlap:
+    cmpl    num_apples(%rip), %r10d
+    jge     apple_position_ok
+    
+    cmpl    %r12d, %r10d
+    je      next_apple_check
+    
+    movslq  %r10d, %r11
+    leaq    apples_x(%rip), %rdi
+    cmpl    %r13d, (%rdi,%r11,4)
+    jne     next_apple_check
+    
+    leaq    apples_y(%rip), %rdi
+    cmpl    %r14d, (%rdi,%r11,4)
+    jne     next_apple_check
+    
+    jmp     retry_position
+    
+next_apple_check:
+    incl    %r10d
+    jmp     check_apple_overlap
+
+apple_position_ok:
     movslq  %r12d, %r8
     leaq    apples_x(%rip), %rdi
     movl    %r13d, (%rdi,%r8,4)
@@ -313,9 +340,6 @@ position_ok:
 /*
 update_direction - Update snake direction based on key
 Comparing with current direction to prevent 180-degree turns.
-
-Parameters:
-    %edi - key code
 */
 update_direction:
     pushq   %rbp
@@ -512,7 +536,6 @@ shift_loop:
     
 shift_done:
 set_new_head:
-    # Set new head position
     leaq    snake_x(%rip), %rdi
     movl    %eax, (%rdi)
     leaq    snake_y(%rip), %rdi
@@ -527,11 +550,10 @@ set_new_head:
     popq    %rbp
     ret
 
-/*********************************************************************
- * check_collision - Check if snake hits itself
- * Returns:
- *   %eax - 1 if collision, 0 otherwise
- ********************************************************************/
+/*
+Check if snake hits itself by getting head position and 
+checking against body segment by segment, boolean return
+*/
 check_collision:
     pushq   %rbp
     movq    %rsp, %rbp
@@ -543,15 +565,15 @@ check_collision:
     leaq    snake_y(%rip), %rdi
     movl    (%rdi), %ebx
     
-    # Check against body (starting from segment 1)
     movl    $1, %ecx
+
 check_coll_loop:
     cmpl    snake_len(%rip), %ecx
     jge     no_collision
     
-    # Sign extend counter for array indexing
     movslq  %ecx, %r8
     
+    # Get segment position
     leaq    snake_x(%rip), %rdi
     cmpl    %eax, (%rdi,%r8,4)
     jne     check_coll_next
@@ -577,8 +599,7 @@ check_coll_done:
     ret
 
 
-# Check if snake eats an apple 
-
+# Check if snake eats an apple and handle growth and speed increase
 check_apple:
     pushq   %rbp
     movq    %rsp, %rbp
@@ -591,13 +612,11 @@ check_apple:
     leaq    snake_y(%rip), %rdi
     movl    (%rdi), %ebx
     
-    # Check each apple
     xorl    %ecx, %ecx
 check_apple_loop:
     cmpl    num_apples(%rip), %ecx
     jge     check_apple_done
     
-    # Sign extend counter for array indexing
     movslq  %ecx, %r8
     
     leaq    apples_x(%rip), %rdi
@@ -616,10 +635,10 @@ check_apple_loop:
     */
 
     movl    game_speed(%rip), %eax
-    imull   $19, %eax               # Multiply by 19
-    xorl    %edx, %edx              # Clear high part for division
+    imull   $19, %eax
+    xorl    %edx, %edx
     movl    $20, %r12d
-    divl    %r12d                   # Divide by 20, result in %eax
+    divl    %r12d
     
     # Check minimum speed (10ms = 10000 microseconds)
     cmpl    $10000, %eax
@@ -628,7 +647,6 @@ check_apple_loop:
 speed_ok:
     movl    %eax, game_speed(%rip)
     
-    # Place new apple
     movl    %ecx, %ebx
     call    place_apple
     jmp     check_apple_done
@@ -645,117 +663,95 @@ check_apple_done:
     ret
 
 
-# Draw a border frame around the game area
 draw_border:
     pushq   %rbp
     movq    %rsp, %rbp
     subq    $8, %rsp
-    pushq   %rbx
     pushq   %r12
-    pushq   %r13
     
-    # Draw top-left corner
-    xorl    %edi, %edi              # x = 0
-    xorl    %esi, %esi              # y = 0
+    # Draw all four corners
+    # Top-left corner (0, 0)
+    xorl    %edi, %edi
+    xorl    %esi, %esi
     movl    $CHAR_CORNER, %edx
-    xorl    %eax, %eax
-    call    board_put_char
-    
-    # Draw top border
-    movl    $1, %r12d               # x counter
-draw_top_border:
-    cmpl    $BOARD_WIDTH, %r12d
-    jge     draw_top_right_corner
-    
-    movl    %r12d, %edi             # x
-    xorl    %esi, %esi              # y = 0
-    movl    $CHAR_HORIZONTAL, %edx
-    xorl    %eax, %eax
-    call    board_put_char
-    
-    incl    %r12d
-    jmp     draw_top_border
-    
-draw_top_right_corner:
-    movl    $BOARD_WIDTH, %edi      # x
-    xorl    %esi, %esi              # y = 0
+    call    draw_char_wrapper
+
+    # Top-right corner (WIDTH, 0)
+    movl    $BOARD_WIDTH, %edi
+    xorl    %esi, %esi
     movl    $CHAR_CORNER, %edx
-    xorl    %eax, %eax
-    call    board_put_char
-    
-    # Draw bottom-left corner
-    xorl    %edi, %edi              # x = 0
-    movl    $BOARD_HEIGHT, %esi     # y
+    call    draw_char_wrapper
+
+    # Bottom-left corner (0, HEIGHT)
+    xorl    %edi, %edi
+    movl    $BOARD_HEIGHT, %esi
     movl    $CHAR_CORNER, %edx
-    xorl    %eax, %eax
-    call    board_put_char
+    call    draw_char_wrapper
+
+    # Bottom-right corner (WIDTH, HEIGHT)
+    movl    $BOARD_WIDTH, %edi
+    movl    $BOARD_HEIGHT, %esi
+    movl    $CHAR_CORNER, %edx
+    call    draw_char_wrapper
     
-    # Draw bottom border
     movl    $1, %r12d
-draw_bottom_border:
+draw_horizontal:
     cmpl    $BOARD_WIDTH, %r12d
-    jge     draw_bottom_right_corner
+    jge     draw_vertical_setup
     
-    movl    %r12d, %edi             # x
-    movl    $BOARD_HEIGHT, %esi     # y
+    # Top border
+    movl    %r12d, %edi
+    xorl    %esi, %esi
     movl    $CHAR_HORIZONTAL, %edx
-    xorl    %eax, %eax
-    call    board_put_char
+    call    draw_char_wrapper
+    
+    # Bottom border
+    movl    %r12d, %edi
+    movl    $BOARD_HEIGHT, %esi
+    movl    $CHAR_HORIZONTAL, %edx
+    call    draw_char_wrapper
     
     incl    %r12d
-    jmp     draw_bottom_border
+    jmp     draw_horizontal
     
-draw_bottom_right_corner:
-    movl    $BOARD_WIDTH, %edi      # x
-    movl    $BOARD_HEIGHT, %esi     # y
-    movl    $CHAR_CORNER, %edx
-    xorl    %eax, %eax
-    call    board_put_char
-    
-    # Draw left border
-    movl    $1, %r12d               # y counter
-draw_left_border:
-    cmpl    $BOARD_HEIGHT, %r12d
-    jge     draw_right_border_start
-    
-    xorl    %edi, %edi              # x = 0
-    movl    %r12d, %esi             # y
-    movl    $CHAR_VERTICAL, %edx
-    xorl    %eax, %eax
-    call    board_put_char
-    
-    incl    %r12d
-    jmp     draw_left_border
-    
-draw_right_border_start:
-    movl    $1, %r12d               # y counter
-draw_right_border:
+draw_vertical_setup:
+    movl    $1, %r12d
+draw_vertical:
     cmpl    $BOARD_HEIGHT, %r12d
     jge     draw_border_done
     
-    movl    $BOARD_WIDTH, %edi      # x
-    movl    %r12d, %esi             # y
+    # Left border
+    xorl    %edi, %edi
+    movl    %r12d, %esi
     movl    $CHAR_VERTICAL, %edx
-    xorl    %eax, %eax
-    call    board_put_char
+    call    draw_char_wrapper
+    
+    # Right border
+    movl    $BOARD_WIDTH, %edi
+    movl    %r12d, %esi
+    movl    $CHAR_VERTICAL, %edx
+    call    draw_char_wrapper
     
     incl    %r12d
-    jmp     draw_right_border
+    jmp     draw_vertical
     
 draw_border_done:
-    popq    %r13
     popq    %r12
-    popq    %rbx
     leave
     ret
 
-/*********************************************************************
- * draw_game - Draw the game state
- ********************************************************************/
+draw_char_wrapper:
+    pushq   %r12
+    xorl    %eax, %eax
+    call    board_put_char
+    popq    %r12
+    ret
+
+
 draw_game:
     pushq   %rbp
     movq    %rsp, %rbp
-    subq    $8, %rsp                # Align stack to 16 bytes
+    subq    $8, %rsp
     pushq   %rbx
     pushq   %r12
     pushq   %r13
@@ -772,13 +768,11 @@ draw_game:
     call    board_put_char
     
 skip_erase_tail:
-    # Draw snake
     xorl    %ecx, %ecx
 draw_snake_loop:
     cmpl    snake_len(%rip), %ecx
     jge     draw_snake_done
     
-    # Sign extend counter for array indexing
     movslq  %ecx, %r13
     
     leaq    snake_x(%rip), %rdi
@@ -796,13 +790,11 @@ draw_snake_loop:
     jmp     draw_snake_loop
     
 draw_snake_done:
-    # Draw apples
     xorl    %ecx, %ecx
 draw_apple_loop:
     cmpl    num_apples(%rip), %ecx
     jge     draw_apple_done
-    
-    # Sign extend counter for array indexing
+
     movslq  %ecx, %r13
     
     leaq    apples_x(%rip), %rdi
