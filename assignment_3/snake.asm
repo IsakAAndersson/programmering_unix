@@ -188,7 +188,8 @@ init_game:
     movl    $BOARD_HEIGHT, %ebx
     shrl    $1, %ebx 
 
-    xorl    %ecx, %ecx              
+    xorl    %ecx, %ecx    
+
 init_snake_loop:
     cmpl    %r12d, %ecx
     jge     init_snake_done
@@ -214,14 +215,15 @@ init_snake_done:
     # Initialize apples
     movl    %r13d, num_apples(%rip)
     xorl    %ecx, %ecx
+
 init_apple_loop:
     cmpl    %r13d, %ecx
     jge     init_apple_done
     
     movl    %ecx, %ebx
-    pushq   %rcx                    # Save counter across function call
+    pushq   %rcx
     call    place_apple
-    popq    %rcx                    # Restore counter
+    popq    %rcx
     incl    %ecx
     jmp     init_apple_loop
     
@@ -410,10 +412,8 @@ move_snake:
     movl    %r12d, tail_y(%rip)
     
     # Get current head position
-    leaq    snake_x(%rip), %rdi
-    movl    (%rdi), %eax            # eax = head x
-    leaq    snake_y(%rip), %rdi
-    movl    (%rdi), %ebx            # ebx = head y
+    movl    snake_x(%rip), %eax
+    movl    snake_y(%rip), %ebx
     
     # Calculate new head position based on direction
     movl    direction(%rip), %ecx
@@ -471,14 +471,14 @@ move_done_calc:
     
     # Growing: don't shift, just add new head
     movl    $0, grow_pending(%rip)
-    movl    $1, just_grew(%rip)     # Set flag that we just grew
+    movl    $1, just_grew(%rip)
     movl    snake_len(%rip), %edx
     incl    %edx
     movl    %edx, snake_len(%rip)
     
     # Shift all segments to make room for new head
     movl    snake_len(%rip), %ecx
-    decl    %ecx                    # Start from last segment (new position)
+    decl    %ecx
     
 grow_shift_loop:
     cmpl    $0, %ecx
@@ -509,7 +509,7 @@ grow_shift_done:
 no_grow:
     # Shift snake body (move from tail to head)
     movl    snake_len(%rip), %ecx
-    decl    %ecx                    # Start from last segment
+    decl    %ecx
     
 shift_loop:
     cmpl    $0, %ecx
@@ -599,8 +599,8 @@ check_coll_done:
     ret
 
 
-# Check if snake eats an apple and handle growth and speed increase
 check_apple:
+# Check if snake eats an apple and handle growth and speed increase
     pushq   %rbp
     movq    %rsp, %rbp
     pushq   %rbx
@@ -613,6 +613,7 @@ check_apple:
     movl    (%rdi), %ebx
     
     xorl    %ecx, %ecx
+
 check_apple_loop:
     cmpl    num_apples(%rip), %ecx
     jge     check_apple_done
@@ -644,6 +645,7 @@ check_apple_loop:
     cmpl    $10000, %eax
     jge     speed_ok
     movl    $10000, %eax
+
 speed_ok:
     movl    %eax, game_speed(%rip)
     
@@ -674,27 +676,32 @@ draw_border:
     xorl    %edi, %edi
     xorl    %esi, %esi
     movl    $CHAR_CORNER, %edx
-    call    draw_char_wrapper
+    xorl    %eax, %eax
+    call    board_put_char
 
     # Top-right corner (WIDTH, 0)
     movl    $BOARD_WIDTH, %edi
     xorl    %esi, %esi
     movl    $CHAR_CORNER, %edx
-    call    draw_char_wrapper
+    xorl    %eax, %eax
+    call    board_put_char
 
     # Bottom-left corner (0, HEIGHT)
     xorl    %edi, %edi
     movl    $BOARD_HEIGHT, %esi
     movl    $CHAR_CORNER, %edx
-    call    draw_char_wrapper
+    xorl    %eax, %eax
+    call    board_put_char
 
     # Bottom-right corner (WIDTH, HEIGHT)
     movl    $BOARD_WIDTH, %edi
     movl    $BOARD_HEIGHT, %esi
     movl    $CHAR_CORNER, %edx
-    call    draw_char_wrapper
+    xorl    %eax, %eax
+    call    board_put_char
     
     movl    $1, %r12d
+
 draw_horizontal:
     cmpl    $BOARD_WIDTH, %r12d
     jge     draw_vertical_setup
@@ -703,19 +710,22 @@ draw_horizontal:
     movl    %r12d, %edi
     xorl    %esi, %esi
     movl    $CHAR_HORIZONTAL, %edx
-    call    draw_char_wrapper
+    xorl    %eax, %eax
+    call    board_put_char
     
     # Bottom border
     movl    %r12d, %edi
     movl    $BOARD_HEIGHT, %esi
     movl    $CHAR_HORIZONTAL, %edx
-    call    draw_char_wrapper
+    xorl    %eax, %eax
+    call    board_put_char
     
     incl    %r12d
     jmp     draw_horizontal
     
 draw_vertical_setup:
     movl    $1, %r12d
+
 draw_vertical:
     cmpl    $BOARD_HEIGHT, %r12d
     jge     draw_border_done
@@ -724,13 +734,15 @@ draw_vertical:
     xorl    %edi, %edi
     movl    %r12d, %esi
     movl    $CHAR_VERTICAL, %edx
-    call    draw_char_wrapper
+    xorl    %eax, %eax
+    call    board_put_char
     
     # Right border
     movl    $BOARD_WIDTH, %edi
     movl    %r12d, %esi
     movl    $CHAR_VERTICAL, %edx
-    call    draw_char_wrapper
+    xorl    %eax, %eax
+    call    board_put_char
     
     incl    %r12d
     jmp     draw_vertical
@@ -739,14 +751,6 @@ draw_border_done:
     popq    %r12
     leave
     ret
-
-draw_char_wrapper:
-    pushq   %r12
-    xorl    %eax, %eax
-    call    board_put_char
-    popq    %r12
-    ret
-
 
 draw_game:
     pushq   %rbp
@@ -769,6 +773,7 @@ draw_game:
     
 skip_erase_tail:
     xorl    %ecx, %ecx
+
 draw_snake_loop:
     cmpl    snake_len(%rip), %ecx
     jge     draw_snake_done
@@ -791,6 +796,7 @@ draw_snake_loop:
     
 draw_snake_done:
     xorl    %ecx, %ecx
+
 draw_apple_loop:
     cmpl    num_apples(%rip), %ecx
     jge     draw_apple_done
