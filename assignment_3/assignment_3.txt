@@ -1,0 +1,13 @@
+Isak Andersson isar23
+Robin Svensson rosv23
+
+Desired grade: A
+
+Motivation:
+We are aware of that we're missing the optional feature with a timer and making helpers assembly. However, we think that
+our implementation of the features we did implement are of high quality. Furthermore, the we have tried to
+keep the code clean by having comprehensive naming conventions instead of excessive comments.
+A quick guide to reoccuring code and more complicated solutions are also provided in the top of snake.asm to help with understanding.
+We also added speed increase and functionality to avoid apples from spawning inside the snake, on top of other apples and on the border.
+The program is also well optimized by making use of registers instead of memory where possible, and cutting operations to a
+minimum to the best of our ability.
