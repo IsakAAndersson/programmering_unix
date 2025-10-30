@@ -1,10 +1,39 @@
-/*********************************************************************
- *
- * Filename:      snake.asm
- * Description:   Snake game implementation in x86-64 assembly
- *                Uses AT&T syntax
- *
- ********************************************************************/
+/* Description:   Snake game implementation in x86-64 assembly. Uses AT&T syntax*/
+
+/* -------------------------
+
+CODE EXPLANATION
+
+subq    $8, %rsp
+    Align stack to 16-byte boundary for function calls that require it.
+
+leave == movq    %rbp, %rsp
+         popq    %rbp
+    Clean up stack frame before returning from function.
+
+<global_variable>(%rip) == current value of global_variable
+    Accessing global variables using RIP-relative addressing.
+
+%edi - first integer parameter (snake length in this case)
+    Standard calling convention for passing parameters in registers.
+
+%esi - second integer parameter (number of apples in this case)
+    Standard calling convention for passing parameters in registers.
+
+%rax / %eax - return value register (64 bit / 32 bit)
+    Standard calling convention for returning values from functions.
+
+xorl %eax, %eax
+    Efficient way to set %eax to zero. (instead of movl $0, %eax)
+
+movslq %ecx, %r8
+    Sign-extend 32-bit integer in %ecx to 64-bit in %r8 for array indexing.
+
+.space SIZE * 4
+    Allocate memory space for an array of SIZE integers (4 bytes each as integers are 4 bytes).
+
+------------------------------*/
+
 
 .section .data
     # Board dimensions
@@ -36,19 +65,19 @@
     .equ MAX_SNAKE_LEN, 1000
     
     # Game state variables
-    snake_x:        .space MAX_SNAKE_LEN * 4  # X coordinates of snake segments
-    snake_y:        .space MAX_SNAKE_LEN * 4  # Y coordinates of snake segments
-    snake_len:      .int 0                     # Current snake length
-    direction:      .int DIR_RIGHT             # Current direction
-    apples_x:       .space 100 * 4             # X coordinates of apples
-    apples_y:       .space 100 * 4             # Y coordinates of apples
-    num_apples:     .int 0                     # Number of apples on board
-    game_speed:     .int 100000                # Game speed (microseconds)
-    tail_x:         .int 0                     # Last tail X position
-    tail_y:         .int 0                     # Last tail Y position
-    grow_pending:   .int 0                     # Flag to indicate growth pending
-    just_grew:      .int 0                     # Flag indicating we just grew this frame
-    
+    snake_x:        .space MAX_SNAKE_LEN * 4   
+    snake_y:        .space MAX_SNAKE_LEN * 4
+    snake_len:      .int 0
+    direction:      .int DIR_RIGHT
+    apples_x:       .space 100 * 4
+    apples_y:       .space 100 * 4
+    num_apples:     .int 0
+    game_speed:     .int 100000
+    tail_x:         .int 0
+    tail_y:         .int 0
+    grow_pending:   .int 0
+    just_grew:      .int 0
+
     # Strings
     score_str:      .asciz "Score: "
 
@@ -64,78 +93,62 @@
 .extern usleep
 .extern rand
 
-/*********************************************************************
- * start_game - Main game entry point
- * Parameters:
- *   %edi - initial snake length
- *   %esi - number of apples
- ********************************************************************/
+# Main game start function, initializing base state
 start_game:
     pushq   %rbp
     movq    %rsp, %rbp
-    subq    $8, %rsp                # Align stack to 16 bytes
+    subq    $8, %rsp                
     pushq   %rbx
     pushq   %r12
     pushq   %r13
     pushq   %r14
     pushq   %r15
     
-    # Save parameters
-    movl    %edi, %r12d             # r12 = initial snake length
-    movl    %esi, %r13d             # r13 = number of apples
+    # Save parameters in safe registers
+    movl    %edi, %r12d           
+    movl    %esi, %r13d             
     
-    # Initialize board
     call    board_init
-    
-    # Draw border
+
     call    draw_border
     
-    # Initialize game state
     movl    %r12d, %edi
     movl    %r13d, %esi
     call    init_game
     
-    # Main game loop
+# Main game loop: input, movement, collision, rendering
 game_loop:
-    # Get keyboard input
     xorl    %eax, %eax
     call    board_get_key
-    movl    %eax, %ebx              # Save key in ebx
+    movl    %eax, %ebx              
     
-    # Process input if key was pressed
     cmpl    $-1, %ebx
     je      skip_input
     
-    # Check for quit key
     cmpl    $KEY_Q, %ebx
     je      game_over
     
-    # Update direction based on key
     movl    %ebx, %edi
     call    update_direction
-    
+   
+# Skip direction update, continue current direction with current speed
 skip_input:
-    # Move snake
     call    move_snake
     
-    # Check for collisions
     call    check_collision
     cmpl    $0, %eax
     jne     game_over
     
-    # Check for apple eating
     call    check_apple
     
-    # Draw everything
     call    draw_game
     
-    # Sleep for game speed
     movl    game_speed(%rip), %edi
     call    usleep
     
-    # Continue loop
     jmp     game_loop
-    
+
+# End game and restore state before exit
 game_over:
     call    game_exit
     
@@ -147,46 +160,37 @@ game_over:
     leave
     ret
 
-/*********************************************************************
- * init_game - Initialize game state
- * Parameters:
- *   %edi - initial snake length
- *   %esi - number of apples
- ********************************************************************/
+
+# Initialize game state with snake length, apple count and start positions
+# Save snake length and number of apples to safe registers (r12d, r13d)
 init_game:
     pushq   %rbp
     movq    %rsp, %rbp
-    subq    $8, %rsp                # Align stack to 16 bytes
+    subq    $8, %rsp                
     pushq   %rbx
     pushq   %r12
     pushq   %r13
-    
-    movl    %edi, %r12d             # Save initial length
-    movl    %esi, %r13d             # Save number of apples
-    
-    # Set snake length
+
+    movl    %edi, %r12d
+    movl    %esi, %r13d
+
     movl    %r12d, snake_len(%rip)
     
-    # Initialize grow flags
     movl    $0, grow_pending(%rip)
     movl    $0, just_grew(%rip)
     
-    # Initialize snake position (center of board)
     movl    $BOARD_WIDTH, %eax
-    shrl    $1, %eax                # eax = width / 2
+    shrl    $1, %eax                
     movl    $BOARD_HEIGHT, %ebx
-    shrl    $1, %ebx                # ebx = height / 2
-    
-    # Initialize snake segments
-    xorl    %ecx, %ecx              # Counter
+    shrl    $1, %ebx 
+
+    xorl    %ecx, %ecx              
 init_snake_loop:
     cmpl    %r12d, %ecx
     jge     init_snake_done
     
-    # Sign extend counter for array indexing
     movslq  %ecx, %r8
-    
-    # Calculate x position (moving left from center)
+
     movl    %eax, %edx
     subl    %ecx, %edx
     leaq    snake_x(%rip), %rdi
@@ -224,11 +228,12 @@ init_apple_done:
     leave
     ret
 
-/*********************************************************************
- * place_apple - Place an apple at random position
- * Parameters:
- *   %ebx - apple index
- ********************************************************************/
+/*
+place_apple - Place an apple at random position
+
+Parameters:
+   %ebx - apple index
+*/
 place_apple:
     pushq   %rbp
     movq    %rsp, %rbp
@@ -305,21 +310,23 @@ position_ok:
     leave
     ret
 
-/*********************************************************************
- * update_direction - Update snake direction based on key
- * Parameters:
- *   %edi - key code
- ********************************************************************/
+/*
+update_direction - Update snake direction based on key
+Comparing with current direction to prevent 180-degree turns.
+
+Parameters:
+    %edi - key code
+*/
 update_direction:
     pushq   %rbp
     movq    %rsp, %rbp
     
     movl    direction(%rip), %eax
     
-    # Check UP key
+# Check UP key
     cmpl    $KEY_UP, %edi
     jne     check_down
-    cmpl    $DIR_DOWN, %eax         # Cannot go up if going down
+    cmpl    $DIR_DOWN, %eax
     je      update_dir_done
     movl    $DIR_UP, direction(%rip)
     jmp     update_dir_done
@@ -327,7 +334,7 @@ update_direction:
 check_down:
     cmpl    $KEY_DOWN, %edi
     jne     check_left
-    cmpl    $DIR_UP, %eax           # Cannot go down if going up
+    cmpl    $DIR_UP, %eax
     je      update_dir_done
     movl    $DIR_DOWN, direction(%rip)
     jmp     update_dir_done
@@ -335,7 +342,7 @@ check_down:
 check_left:
     cmpl    $KEY_LEFT, %edi
     jne     check_right
-    cmpl    $DIR_RIGHT, %eax        # Cannot go left if going right
+    cmpl    $DIR_RIGHT, %eax
     je      update_dir_done
     movl    $DIR_LEFT, direction(%rip)
     jmp     update_dir_done
@@ -343,18 +350,17 @@ check_left:
 check_right:
     cmpl    $KEY_RIGHT, %edi
     jne     update_dir_done
-    cmpl    $DIR_LEFT, %eax         # Cannot go right if going left
+    cmpl    $DIR_LEFT, %eax
     je      update_dir_done
     movl    $DIR_RIGHT, direction(%rip)
     
 update_dir_done:
-    movq    %rbp, %rsp
-    popq    %rbp
+    leave
     ret
 
-/*********************************************************************
- * move_snake - Move the snake in current direction
- ********************************************************************/
+
+# move_snake - Move the snake in current direction
+
 move_snake:
     pushq   %rbp
     movq    %rsp, %rbp
@@ -567,13 +573,12 @@ no_collision:
     
 check_coll_done:
     popq    %rbx
-    movq    %rbp, %rsp
-    popq    %rbp
+    leave
     ret
 
-/*********************************************************************
- * check_apple - Check if snake eats an apple
- ********************************************************************/
+
+# Check if snake eats an apple 
+
 check_apple:
     pushq   %rbp
     movq    %rsp, %rbp
@@ -603,11 +608,13 @@ check_apple_loop:
     cmpl    %ebx, (%rdi,%r8,4)
     jne     check_apple_next
     
-    # Apple eaten! Set grow flag
     movl    $1, grow_pending(%rip)
     
-    # Increase speed (decrease delay by 5%)
-    # new_speed = current_speed * 0.95 = current_speed * 19 / 20
+    /* 
+    Increase speed (decrease delay by 5%)
+    new_speed = current_speed * 0.95 = current_speed * 19 / 20
+    */
+
     movl    game_speed(%rip), %eax
     imull   $19, %eax               # Multiply by 19
     xorl    %edx, %edx              # Clear high part for division
@@ -637,13 +644,12 @@ check_apple_done:
     popq    %rbp
     ret
 
-/*********************************************************************
- * draw_border - Draw a border frame around the game area
- ********************************************************************/
+
+# Draw a border frame around the game area
 draw_border:
     pushq   %rbp
     movq    %rsp, %rbp
-    subq    $8, %rsp                # Align stack
+    subq    $8, %rsp
     pushq   %rbx
     pushq   %r12
     pushq   %r13
